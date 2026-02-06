@@ -9,7 +9,24 @@ no warnings;
 use vars qw($ERROR);
 use Carp qw(croak carp);
 use Data::Dumper;
+use HTML::Entities;
 use XML::Entities;
+
+BEGIN {
+	%HTML::Entities::char2entity = %{
+		# XML::Entities::Data::char2entity('all');
+		# We explicitly do not want *all* here. 'all' in the XML::Entities module
+		# is JUST PLAIN WRONG, as these are HTML entities that are NOT part of XML.
+
+		{
+			'&' => '&amp;',
+			'<' => '&lt;',
+			'>' => '&gt;',
+			"'" => "&apos;",
+			'"' => '&quot;',
+		}
+	};
+}
 
 use Exporter qw(import);
 
@@ -27,7 +44,7 @@ our %EXPORT_TAGS = (
 	'all' => \@EXPORT_OK,
 	);
 
-our $VERSION = '1.603_02';
+our $VERSION = '1.606';
 
 =encoding utf8
 
@@ -469,7 +486,7 @@ sub read_dict {
 		my $key;
 		while (not defined $key) {
 			if (s[^\s*<key>(.*?)</key>][]s) {
-				$key = $1;
+				$key = HTML::Entities::decode($1);
 				# Bring this back if you want this behavior:
 				# croak "Key is empty string!" if $key eq '';
 				}
@@ -809,14 +826,16 @@ sub as_basic_data {
 	return \%dict;
 	}
 
-sub write_key   { "<key>$_[1]</key>" }
+sub write_key   {
+	'<key>' . HTML::Entities::encode_entities($_[1]) . '</key>'
+	}
 
 sub write {
 	my $self  = shift;
 
 	my $string = $self->write_open . "\n";
 
-	foreach my $key ( $self->keys ) {
+	foreach my $key ( sort { $a cmp $b } $self->keys ) {
 		my $element = $self->{$key};
 
 		my $bit  = __PACKAGE__->write_key( $key ) . "\n";
@@ -853,7 +872,7 @@ sub new { my $copy = $_[1]; $_[0]->SUPER::new( \$copy ) }
 
 sub as_basic_data { $_[0]->value }
 
-sub write { $_[0]->write_open . $_[0]->value . $_[0]->write_close }
+sub write { $_[0]->write_open . HTML::Entities::encode_entities($_[0]->value) . $_[0]->write_close }
 
 sub as_perl { $_[0]->value }
 
@@ -1025,7 +1044,7 @@ Tom Wyant added support for UID types.
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright © 2004-2025, brian d foy <briandfoy@pobox.com>. All rights reserved.
+Copyright © 2004-2026, brian d foy <briandfoy@pobox.com>. All rights reserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the Artistic License 2.0.

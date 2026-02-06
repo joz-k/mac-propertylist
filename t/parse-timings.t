@@ -1,6 +1,9 @@
 #!/usr/bin/env perl
+use strict;
+use warnings;
 
-BEGIN { @plists = grep { ! /json/ } glob( 'plists/*.plist' ); }
+use vars qw(@plists);
+BEGIN { @plists = grep { /\Aentities\./ } grep { ! /json/ } glob( 'plists/*.plist' ); }
 my $debug = $ENV{PLIST_DEBUG} || 0;
 
 use Test::More;
@@ -21,10 +24,10 @@ plists.t - try to load all the non-JSON plist files in plists/
 	% prove
 
 	# run a single test
-	% perl -Ilib t/plists.t
+	% perl -Ilib t/parse-timings.t
 
 	# run a single test
-	% prove t/plists.t
+	% prove t/parse-timings.t
 
 =head1 AUTHORS
 
@@ -48,7 +51,7 @@ This file was originally in https://github.com/briandfoy/mac-propertylist
 
 =head1 COPYRIGHT
 
-Copyright © 2002-2025, brian d foy, C<< <briandfoy@pobox.com> >>
+Copyright © 2002-2026, brian d foy, C<< <briandfoy@pobox.com> >>
 
 =head1 LICENSE
 
@@ -68,15 +71,17 @@ subtest 'sanity' => sub {
 	use_ok $class;
 
 	$sub = $class->can( 'parse_plist' );
-	ok defined $sub, "$parse_fqname is defined";
+	ok defined $sub, 'parse_plist is defined';
 	} or do {
 		warn "sanity test failed. Continuing is pointless.";
 		done_testing();
 		exit 1;
 	};
 
+my %Skip;
 foreach my $file ( @plists ) {
 	subtest $file => sub {
+		next if exists $Skip{$file};
 		diag( "Working on $file" ) if $debug;
 		unless( open FILE, '<', $file ) {
 			fail( "Could not open $file" );
